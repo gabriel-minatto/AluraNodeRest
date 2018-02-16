@@ -20,6 +20,7 @@ module.exports = function(){
     consign() //consign({cwd:'payfast'})
      .include('controllers')
      .then('persistencia')
+     .then('servicos')
      .into(app);
     
     return app;

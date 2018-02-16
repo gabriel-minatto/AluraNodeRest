@@ -7,7 +7,7 @@ curl http://localhost:8080/pagamentos/pagamento -X POST -v -H "Content-type: app
 
 ############
 
-curl http://localhost:8080/pagamentos/pagamento -X POST -v -H "Content-type: application/json" -d @../files/pagamento.json
+curl http://localhost:8082/pagamentos/pagamento -X POST -v -H "Content-type: application/json" -d @files/pagamento.json
 
 ############
 

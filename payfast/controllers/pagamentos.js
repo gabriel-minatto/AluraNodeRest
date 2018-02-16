@@ -51,9 +51,9 @@ module.exports = function(app){
     
     app.post('/pagamentos/pagamento', function(req, res){
         
-        req.assert("forma_de_pagamento", "Forma de pagamento é obrigatória").notEmpty();
-        req.assert("valor", "Valor é obrigatório e deve ser um decimal").notEmpty().isFloat();
-        req.assert("moeda", "Moeda é obrigatória e deve conter 3 caracteres").notEmpty().len(3,3);
+        req.assert("pagamento.forma_de_pagamento", "Forma de pagamento é obrigatória").notEmpty();
+        req.assert("pagamento.valor", "Valor é obrigatório e deve ser um decimal").notEmpty().isFloat();
+        req.assert("pagamento.moeda", "Moeda é obrigatória e deve conter 3 caracteres").notEmpty().len(3,3);
         
         var erros = req.validationErrors();
         
@@ -63,7 +63,7 @@ module.exports = function(app){
             return
         }
         
-        var pagamento = req.body;
+        var pagamento = req.body['pagamento'];
         console.log("processando novo pagamento");
 
         pagamento.status = "Criado";
@@ -74,30 +74,52 @@ module.exports = function(app){
         var pagamentoDao = new app.persistencia.PagamentosDao(connection);
         
         pagamentoDao.salva(pagamento, function(erro, resultado){
-            if(!erro){
-                pagamento.id = resultado.insertId;
-                res.location('/pagamentos/pagamento/'+pagamento.id)
-                var response = {
-                    dados_do_pagamento: pagamento,
-                    links: [
-                        {
-                            href:"http://localhost:8080/pagamentos/pagamento/"+pagamento.id,
-                            rel:"confirmar",
-                            method:"PUT"
-                        },
-                        {
-                            href:"http://localhost:8080/pagamentos/pagamento/"+pagamento.id,
-                            rel:"cancelar",
-                            method:"DELETE"
-                        }
-                    ]
-                };
-                res.status(201).json(response)
+            if(erro){
+                res.status(500).send(erro)
+                console.log("Erro ao inserir no banco: "+erro)
                 return
             }
-
-            res.status(500).send(erro)
-            console.log("Erro ao inserir no banco: "+erro)
+            
+            pagamento.id = resultado.insertId;
+            
+            res.location('/pagamentos/pagamento/'+pagamento.id)
+            
+            const response = {
+                dados_do_pagamento: pagamento,
+                links: [
+                    {
+                        href:"http://localhost:8080/pagamentos/pagamento/"+pagamento.id,
+                        rel:"confirmar",
+                        method:"PUT"
+                    },
+                    {
+                        href:"http://localhost:8080/pagamentos/pagamento/"+pagamento.id,
+                        rel:"cancelar",
+                        method:"DELETE"
+                    }
+                ]
+            };
+                
+            if(pagamento.forma_de_pagamento == 'cartao'){
+                const cartao = req.body['cartao']
+                
+                const clienteCartoes = new app.servicos.clienteCartoes()
+                clienteCartoes.autoriza(cartao, (exception, requestCard, responseCard, retorno) => {
+                    if(exception){
+                        console.log(exception)
+                        res.status(400).send(exception)
+                        return
+                    }
+                    
+                    response.cartao = retorno
+                    res.status(201).json(response)
+                    
+                })
+                
+                return
+            }
+            
+            res.status(201).json(response)
         });
 
     });
